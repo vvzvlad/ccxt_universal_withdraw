@@ -1,3 +1,5 @@
 account_bybit_info.txt
 account_okx_info.txt
 wallets.txt
+/logs
+/.venv
