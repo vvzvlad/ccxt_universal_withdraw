@@ -1,0 +1,225 @@
+import time
+import ccxt
+import json
+from termcolor import cprint
+import random
+import csv
+from locale import atof
+import os
+import yaml
+import sys
+import random
+
+wallets_file_path = os.path.join(os.path.dirname(__file__), 'wallets.txt')
+cred_file_path = os.path.join(os.path.dirname(__file__), 'settings.txt')
+
+# Проверка наличия файлов
+if not os.path.exists(wallets_file_path):
+    raise FileNotFoundError(f"Wallets file '{wallets_file_path}' is missing.")
+if not os.path.exists(cred_file_path):
+    raise FileNotFoundError(f"Settings file '{cred_file_path}' is missing.")
+
+# Открываем файл
+with open(cred_file_path, 'r') as file:
+    data = yaml.safe_load(file)
+
+# Проверка наличия переменных в файле и их пустые значения
+required_variables = ['API_KEY_BINANCE', 'API_SECRET_BINANCE', 'API_KEY_OKX', 'API_SECRET_OKX', 'API_PASSPHRASE_OKX', 'API_BYBIT_KEY', 'API_BYBIT_SECRET', 'time_sleep_low', 'time_sleep_max']
+missing_variables = [var for var in required_variables if var not in data or not data[var]]
+
+if missing_variables:
+    raise ValueError(f"Missing or empty required variables in settings file: {', '.join(missing_variables)}")
+
+# Получаем значения переменных
+API_KEY_BINANCE = data['API_KEY_BINANCE']
+API_SECRET_BINANCE = data['API_SECRET_BINANCE']
+API_KEY_OKX = data['API_KEY_OKX']
+API_SECRET_OKX = data['API_SECRET_OKX']
+API_PASSPHRASE_OKX = data['API_PASSPHRASE_OKX']
+API_BYBIT_KEY = data['API_BYBIT_KEY']
+API_BYBIT_SECRET = data['API_BYBIT_SECRET']
+time_sleep_low = data['time_sleep_low']
+time_sleep_max = data['time_sleep_max']
+test_mode = data['test_mode']
+
+cprint(f"Start. python_ver: {sys.version}, ccxt_ver: {ccxt.__version__}", "white")
+if random.randint(1, 100) <= 20:
+    cprint(f"Харе работать, иди проветрись", "red")
+
+def stub_withdraw(address, amount_to_withdrawal, symbolWithdraw, network, exchange):
+    cprint(f">>> Stub withdraw ok: {exchange} | {address} | {amount_to_withdrawal} | {symbolWithdraw} | {network}  ", "green")
+
+
+def binance_withdraw(address, amount_to_withdrawal, symbolWithdraw, network, exchange):
+    account_binance = ccxt.binance({
+        'apiKey': API_KEY_BINANCE,
+        'secret': API_SECRET_BINANCE,
+        'enableRateLimit': True,
+        'options': {
+            'defaultType': 'spot'
+        }
+    })
+
+    #info = account_bybit.fetch_currencies()
+    #with open(os.path.join(os.path.dirname(__file__), 'account_binance_info.txt'), 'w') as f:
+    #        json.dump(info, f, indent=4)    
+
+    try:
+        account_binance.withdraw(
+            code    = symbolWithdraw,
+            amount  = amount_to_withdrawal,
+            address = address,
+            tag     = None,
+            params  = {
+                "network": network
+            }
+        )
+        cprint(f">>> Succesfull (binance) | {address} | {amount_to_withdrawal}", "green")
+    except Exception as error:
+        cprint(f">>> Error (binance) | {address} | {type(error).__name__}: {error}", "red")
+
+def bybit_withdraw(address, amount_to_withdrawal, symbolWithdraw, network, exchange):
+    account_bybit = ccxt.bybit({
+        'apiKey': API_BYBIT_KEY,
+        'secret': API_BYBIT_SECRET,
+        'enableRateLimit': True,
+        'options': { "defaultType": "spot", "recvWindow": 10000*1000, 'adjustForTimeDifference': True, },
+    })
+
+
+    #account_bybit.verbose = True
+
+    #info = account_bybit.fetch_currencies()
+    #with open(os.path.join(os.path.dirname(__file__), 'account_bybit_info.txt'), 'w') as f:
+    #        json.dump(info, f, indent=4)    
+    
+    #bybit_time = account_bybit.fetch_time()
+    #my_time = account_bybit.milliseconds()
+    
+    #account_bybit.options['customTimestamp'] = bybit_time
+
+    try:
+        account_bybit.withdraw(
+            code    = symbolWithdraw,
+            amount  = amount_to_withdrawal,
+            address = address,
+            tag     = None,
+            params  = {
+                "network": network
+            }
+        )
+        cprint(f">>> Succesfull (bybit) | {address} | {amount_to_withdrawal}", "green")
+    except Exception as error:
+        cprint(f">>> Error (bybit) | {address} | {type(error).__name__}: {error}, time: {my_time}, bybit_time: {bybit_time}, python_ver: {sys.version}, ccxt_ver: {ccxt.__version__}, ", "red")
+        
+
+def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
+    try:
+        account_okx = ccxt.okx({
+            'apiKey': API_KEY_OKX,
+            'secret': API_SECRET_OKX,
+            'password': API_PASSPHRASE_OKX,
+            'enableRateLimit': True,
+        })
+
+        #info = account_okx.fetch_currencies()
+        #with open(os.path.join(os.path.dirname(__file__), 'account_okx_info.txt'), 'w') as f:
+        #    json.dump(info, f, indent=4)   
+
+        def token_fee(token, network):
+            info = account_okx.fetch_currencies()
+            network_fee = info[token]['networks'][network]['fee']
+            return network_fee
+        
+
+        account_okx.withdraw(symbol_withdraw, amount_to_withdrawal, address, params={
+            'toAddress': address,
+            'chainName': network,
+            'dest': 4,  
+            'fee': token_fee(symbol_withdraw, network),
+            'pwd': '-',
+            'amt': amount_to_withdrawal,
+            'network': network
+        })
+
+        cprint(f">>> Succesfull (okx) | {address} | {amount_to_withdrawal}", "green")
+    except Exception as error:
+        cprint(f">>> Error (okx) | {address} | {type(error).__name__}: {str(error)}", "red")
+
+network_mappings = {
+    "binance": {
+        "арби": "ARBITRUM",
+        "опти": "OPTIMISM",
+        "бейс": "BASE",
+        "сол": "SOL",
+        "BSC": "BEP20",
+        "матик": "MATIC",
+        "function": binance_withdraw
+    },
+    "okex": {
+        "арби": "ARBONE",
+        "опти": "OPTIMISM",
+        "бейс": "Base",
+        "сол": "SOL",
+        "BSC": "BEP20",
+        "матик": "MATIC",
+        "function": okex_withdraw
+    },
+    "bybit": {
+        "арби": "ARBI", 
+        "опти": "OP", 
+        "бейс": "BASE", 
+        "сол": "SOL", 
+        "function": bybit_withdraw
+    }
+}
+
+if __name__ == "__main__":
+
+    with open(wallets_file_path, 'r', encoding='utf-8', newline='') as tsvfile:
+        reader = csv.reader(tsvfile, delimiter='\t')
+        total_wallets = sum(1 for row in reader)
+        tsvfile.seek(0)
+
+        for idx, row in enumerate(reader, start=1):
+            if any(not field for field in row):
+                cprint(f'Skipping row {idx} due to empty field(s)', 'yellow')
+                continue
+            wallet = row[0]
+            amount_str = row[1].replace(',', '.')
+            amount = round(float(amount_str), 8) if amount_str else 0.0
+            symbol_withdraw = row[2]
+            network = ""
+            
+            exchange = row[4].lower()
+            exchange_data = network_mappings.get(exchange, {})
+            
+            network_key = row[3].lower()
+            network = exchange_data.get(network_key)
+
+
+            if exchange not in network_mappings:
+                cprint(f'Unsupported exchange: "{exchange}". Supported exchanges are: {", ".join(network_mappings.keys())}', "red")
+                quit()
+
+            exchange_data = network_mappings[exchange]
+            if network_key not in exchange_data:
+                cprint(f'Unsupported network: "{network_key}" for exchange {exchange}. Supported networks are: {", ".join(exchange_data.keys())}', "red")
+                quit()
+
+            network = exchange_data[network_key]
+            cprint(f'Withdrawing by {exchange}: {amount} {symbol_withdraw} -> {wallet}/{network}, wallet {idx} of {total_wallets}', 'white')
+            
+            
+            if test_mode == "yes":
+                withdraw_function = stub_withdraw
+            else:
+                withdraw_function = exchange_data.get("function")
+
+            withdraw_function(wallet, amount, symbol_withdraw, network, exchange)
+            
+            
+            sleep_time = random.randint(time_sleep_low, time_sleep_max)
+            cprint(f'Sleeping for {sleep_time} seconds...', 'white')
+            time.sleep(sleep_time)
+

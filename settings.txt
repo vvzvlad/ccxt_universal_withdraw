@@ -1,0 +1,10 @@
+API_KEY_BINANCE: your_binance_api_key
+API_SECRET_BINANCE: your_binance_api_secret
+API_KEY_OKX: your_okx_api_key
+API_SECRET_OKX: your_okx_api_secret
+API_PASSPHRASE_OKX: your_okx_api_passphrase
+API_BYBIT_KEY: your_bybit_api_key
+API_BYBIT_SECRET: your_bybit_api_secret
+time_sleep_low: 5
+time_sleep_max: 8
+test_mode: "yes"
