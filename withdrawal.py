@@ -9,6 +9,11 @@ import os
 import yaml
 import sys
 import random
+import datetime
+
+start_time = datetime.datetime.now()
+success_file_path = os.path.join(os.path.dirname(__file__), f"success_{start_time.strftime('%Y-%m-%d_%H-%M-%S')}.csv") 
+error_file_path = os.path.join(os.path.dirname(__file__), f"error_{start_time.strftime('%Y-%m-%d_%H-%M-%S')}.csv") 
 
 wallets_file_path = os.path.join(os.path.dirname(__file__), 'wallets.txt')
 cred_file_path = os.path.join(os.path.dirname(__file__), 'settings.txt')
@@ -49,24 +54,41 @@ if random.randint(1, 100) <= 20:
 def stub_withdraw(address, amount_to_withdrawal, symbolWithdraw, network, exchange):
     cprint(f">>> Stub withdraw ok: {exchange} | {address} | {amount_to_withdrawal} | {symbolWithdraw} | {network}  ", "green")
 
+def write_to_csv(filename, data):
+    with open(filename, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(data)
 
-def binance_withdraw(address, amount_to_withdrawal, symbolWithdraw, network, exchange):
-    account_binance = ccxt.binance({
-        'apiKey': API_KEY_BINANCE,
-        'secret': API_SECRET_BINANCE,
-        'enableRateLimit': True,
-        'options': {
-            'defaultType': 'spot'
-        }
-    })
+def write_header():
+    success_header = ["Transaction Time", "Exchange", "Network", "Symbol Withdraw", "Address", "Amount to Withdrawal", "Status"]
+    error_header = ["Transaction Time", "Exchange", "Network", "Symbol Withdraw", "Address", "Amount to Withdrawal", "Error Type", "Error Message"]
 
-    #info = account_bybit.fetch_currencies()
-    #with open(os.path.join(os.path.dirname(__file__), 'account_binance_info.txt'), 'w') as f:
-    #        json.dump(info, f, indent=4)    
+    with open(success_file_path, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(success_header)
 
+    with open(error_file_path, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(error_header)
+
+def binance_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
+    transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     try:
+        account_binance = ccxt.binance({
+            'apiKey': API_KEY_BINANCE,
+            'secret': API_SECRET_BINANCE,
+            'enableRateLimit': True,
+            'options': {
+                'defaultType': 'spot'
+            }
+        })
+
+        #info = account_bybit.fetch_currencies()
+        #with open(os.path.join(os.path.dirname(__file__), 'account_binance_info.txt'), 'w') as f:
+        #        json.dump(info, f, indent=4)    
+        
         account_binance.withdraw(
-            code    = symbolWithdraw,
+            code    = symbol_withdraw,
             amount  = amount_to_withdrawal,
             address = address,
             tag     = None,
@@ -75,32 +97,35 @@ def binance_withdraw(address, amount_to_withdrawal, symbolWithdraw, network, exc
             }
         )
         cprint(f">>> Succesfull (binance) | {address} | {amount_to_withdrawal}", "green")
+        write_to_csv(success_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, "success"])
     except Exception as error:
         cprint(f">>> Error (binance) | {address} | {type(error).__name__}: {error}", "red")
-
-def bybit_withdraw(address, amount_to_withdrawal, symbolWithdraw, network, exchange):
-    account_bybit = ccxt.bybit({
-        'apiKey': API_BYBIT_KEY,
-        'secret': API_BYBIT_SECRET,
-        'enableRateLimit': True,
-        'options': { "defaultType": "spot", "recvWindow": 10000*1000, 'adjustForTimeDifference': True, },
-    })
+        write_to_csv(error_file_path, [ transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, type(error).__name__, str(error)])
 
 
-    #account_bybit.verbose = True
-
-    #info = account_bybit.fetch_currencies()
-    #with open(os.path.join(os.path.dirname(__file__), 'account_bybit_info.txt'), 'w') as f:
-    #        json.dump(info, f, indent=4)    
-    
-    #bybit_time = account_bybit.fetch_time()
-    #my_time = account_bybit.milliseconds()
-    
-    #account_bybit.options['customTimestamp'] = bybit_time
-
+def bybit_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
+    transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     try:
+        account_bybit = ccxt.bybit({
+            'apiKey': API_BYBIT_KEY,
+            'secret': API_BYBIT_SECRET,
+            'enableRateLimit': True,
+            'options': { "defaultType": "spot", "recvWindow": 10000*1000, 'adjustForTimeDifference': True, },
+        })
+
+        #account_bybit.verbose = True
+
+        #info = account_bybit.fetch_currencies()
+        #with open(os.path.join(os.path.dirname(__file__), 'account_bybit_info.txt'), 'w') as f:
+        #        json.dump(info, f, indent=4)    
+        
+        #bybit_time = account_bybit.fetch_time()
+        #my_time = account_bybit.milliseconds()
+        
+        #account_bybit.options['customTimestamp'] = bybit_time
+    
         account_bybit.withdraw(
-            code    = symbolWithdraw,
+            code    = symbol_withdraw,
             amount  = amount_to_withdrawal,
             address = address,
             tag     = None,
@@ -109,11 +134,14 @@ def bybit_withdraw(address, amount_to_withdrawal, symbolWithdraw, network, excha
             }
         )
         cprint(f">>> Succesfull (bybit) | {address} | {amount_to_withdrawal}", "green")
+        write_to_csv(success_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, "success"])
     except Exception as error:
-        cprint(f">>> Error (bybit) | {address} | {type(error).__name__}: {error}, time: {my_time}, bybit_time: {bybit_time}, python_ver: {sys.version}, ccxt_ver: {ccxt.__version__}, ", "red")
+        cprint(f">>> Error (bybit) | {address} | {type(error).__name__}: {error}", "red")
+        write_to_csv(error_file_path, [ transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, type(error).__name__, str(error)])
         
 
 def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
+    transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     try:
         account_okx = ccxt.okx({
             'apiKey': API_KEY_OKX,
@@ -143,8 +171,10 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
         })
 
         cprint(f">>> Succesfull (okx) | {address} | {amount_to_withdrawal}", "green")
+        write_to_csv(success_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, "success"])
     except Exception as error:
         cprint(f">>> Error (okx) | {address} | {type(error).__name__}: {str(error)}", "red")
+        write_to_csv(error_file_path, [ transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, type(error).__name__, str(error)])
 
 network_mappings = {
     "binance": {
