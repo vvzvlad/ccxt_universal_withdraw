@@ -114,17 +114,10 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
     transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
  
     def sign_message(secret_key, method, request_path, timestamp, body=''):
-        if transaction_time is None:
-            transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'  # Генерация UTC времени
-        
-        print(f"Transaction Time: {transaction_time}")
+        print(f"Transaction Time: {timestamp}")
         print(f"HTTP Method: {method}")
         print(f"Request Path: {request_path}")
         print(f"Body: {body}")
-
-        now = datetime.datetime.utcnow()
-        t = now.isoformat("T", "milliseconds")
-        timestamp = t + "Z"
 
         if str(body) == '{}' or str(body) == 'None':
             body = ''
