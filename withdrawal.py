@@ -127,11 +127,18 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
             'Content-Type': 'application/json'
         }
         response = requests.get(url, headers=headers, params={'ccy': token})
-        data = response.json()['data']
-        for item in data:
-            if item['chain'] == network:
-                return item['minFee']
-        raise ValueError('Network not found for the specified token')
+        response_json = response.json()
+        if response_json['code'] == "0":  # Успешный код ответа
+            data = response_json['data']
+            for item in data:
+                if item['chain'] == network:
+                    return item['minFee']
+            raise ValueError('Network not found for the specified token')
+        else:
+            print(f"API Error Response: {json.dumps(response_json, indent=4)}")  # Вывод JSON в случае ошибки
+            error_msg = response_json.get('msg', 'Unknown error')
+            raise Exception(f"API Error: {error_msg}")
+
 
     
     method = 'POST'
