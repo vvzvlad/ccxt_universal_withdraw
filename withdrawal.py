@@ -112,7 +112,7 @@ def bybit_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exch
 def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
     transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
  
-    def sign_message(secret_key):
+    def sign_message(secret_key, body=''):
         prehash_string = transaction_time + method + request_path + body
         return base64.b64encode(hmac.new(secret_key.encode(), prehash_string.encode(), hashlib.sha256).digest()).decode()
 
@@ -148,7 +148,7 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
 
     headers = {
         'OK-ACCESS-KEY': API_KEY_OKX,
-        'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX),
+        'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX, body),
         'OK-ACCESS-TIMESTAMP': transaction_time,
         'OK-ACCESS-PASSPHRASE': API_PASSPHRASE_OKX,
         'Content-Type': 'application/json'
