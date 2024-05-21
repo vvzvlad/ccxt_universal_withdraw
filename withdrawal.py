@@ -111,6 +111,27 @@ def bybit_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exch
 
 def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
     transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+ 
+    def sign_message(secret_key):
+        prehash_string = transaction_time + method + request_path + body
+        return base64.b64encode(hmac.new(secret_key.encode(), prehash_string.encode(), hashlib.sha256).digest()).decode()
+
+    def token_fee(token, network):
+        url = 'https://www.okx.com/api/v5/asset/currencies'
+        headers = {
+            'OK-ACCESS-KEY': API_KEY_OKX,
+            'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX),
+            'OK-ACCESS-TIMESTAMP': transaction_time,
+            'OK-ACCESS-PASSPHRASE': API_PASSPHRASE_OKX,
+            'Content-Type': 'application/json'
+        }
+        response = requests.get(url, headers=headers, params={'ccy': token})
+        data = response.json()['data']
+        for item in data:
+            if item['chain'] == network:
+                return item['minFee']
+        raise ValueError('Network not found for the specified token')
+
     
     method = 'POST'
     request_path = '/api/v5/asset/withdrawal'
@@ -124,9 +145,6 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
         'network': network
     })
 
-    def sign_message(secret_key):
-        prehash_string = transaction_time + method + request_path + body
-        return base64.b64encode(hmac.new(secret_key.encode(), prehash_string.encode(), hashlib.sha256).digest()).decode()
 
     headers = {
         'OK-ACCESS-KEY': API_KEY_OKX,
@@ -136,18 +154,7 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
         'Content-Type': 'application/json'
     }
 
-    def token_fee(token, network):
-        url = 'https://www.okx.com/api/v5/asset/currencies'
-        response = requests.get(url, headers={
-            'OK-ACCESS-KEY': API_KEY_OKX,
-            'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX),
-            'OK-ACCESS-TIMESTAMP': transaction_time,
-            'OK-ACCESS-PASSPHRASE': API_PASSPHRASE_OKX,
-            'Content-Type': 'application/json'
-        })
-        info = response.json()
-        network_fee = info['data'][0]['networks'][network]['fee']
-        return network_fee
+
     try:
         response = requests.post('https://www.okx.com' + request_path, headers=headers, data=body)
         if response.status_code == 200:
