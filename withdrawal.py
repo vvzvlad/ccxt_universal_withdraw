@@ -113,7 +113,7 @@ def bybit_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exch
 def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
     transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
  
-    def sign_message(secret_key, method, request_path, body='', transaction_time=None):
+    def sign_message(secret_key, method, request_path, timestamp, body=''):
         if transaction_time is None:
             transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'  # Генерация UTC времени
         
@@ -121,18 +121,28 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
         print(f"HTTP Method: {method}")
         print(f"Request Path: {request_path}")
         print(f"Body: {body}")
+
+        now = datetime.datetime.utcnow()
+        t = now.isoformat("T", "milliseconds")
+        timestamp = t + "Z"
+
+        if str(body) == '{}' or str(body) == 'None':
+            body = ''
+        message = str(timestamp) + str.upper(method) + request_path + str(body)
+
+        mac = hmac.new(bytes(secret_key, encoding='utf8'), bytes(message, encoding='utf-8'), digestmod='sha256')
+        digest = mac.digest()
+        base64_digest = base64.b64encode(digest)
+
+        print(f"Prehash String: {message}")
         
-        prehash_string = transaction_time + method + request_path + body
-        print(f"Prehash String: {prehash_string}")
-        
-        signature = hmac.new(secret_key.encode(), prehash_string.encode(), hashlib.sha256).digest()
-        encoded_signature = base64.b64encode(signature).decode()
-        
-        print(f"Signature: {encoded_signature}")
-        return encoded_signature
+        print(f"Signature: {base64_digest}")
+        return base64_digest
 
     def token_fee(token, network):
-        transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+        now = datetime.datetime.utcnow()
+        t = now.isoformat("T", "milliseconds")
+        timestamp = t + "Z"
         method = 'GET'
         request_path = '/api/v5/asset/currencies'
         body = ''  # Для GET запроса тело пустое
@@ -140,8 +150,8 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
         
         headers = {
             'OK-ACCESS-KEY': API_KEY_OKX,
-            'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX, method, request_path, body),
-            'OK-ACCESS-TIMESTAMP': transaction_time,
+            'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX, method, request_path, timestamp, body),
+            'OK-ACCESS-TIMESTAMP': timestamp,
             'OK-ACCESS-PASSPHRASE': API_PASSPHRASE_OKX,
             'Content-Type': 'application/json'
         }
