@@ -131,7 +131,7 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
         print(f"Signature: {encoded_signature}")
         return encoded_signature
 
-    def token_fee(token, network, API_KEY_OKX, API_SECRET_OKX, API_PASSPHRASE_OKX):
+    def token_fee(token, network):
         transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
         method = 'GET'
         request_path = '/api/v5/asset/currencies'
