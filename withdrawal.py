@@ -113,34 +113,53 @@ def bybit_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exch
 def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
     transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
  
-    def sign_message(secret_key, body=''):
+    def sign_message(secret_key, method, request_path, body='', transaction_time=None):
+        if transaction_time is None:
+            transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'  # Генерация UTC времени
+        
+        print(f"Transaction Time: {transaction_time}")
+        print(f"HTTP Method: {method}")
+        print(f"Request Path: {request_path}")
+        print(f"Body: {body}")
+        
         prehash_string = transaction_time + method + request_path + body
-        return base64.b64encode(hmac.new(secret_key.encode(), prehash_string.encode(), hashlib.sha256).digest()).decode()
+        print(f"Prehash String: {prehash_string}")
+        
+        signature = hmac.new(secret_key.encode(), prehash_string.encode(), hashlib.sha256).digest()
+        encoded_signature = base64.b64encode(signature).decode()
+        
+        print(f"Signature: {encoded_signature}")
+        return encoded_signature
 
-    def token_fee(token, network):
-        url = 'https://www.okx.com/api/v5/asset/currencies'
+    def token_fee(token, network, API_KEY_OKX, API_SECRET_OKX, API_PASSPHRASE_OKX):
+        transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+        method = 'GET'
+        request_path = '/api/v5/asset/currencies'
+        body = ''  # Для GET запроса тело пустое
+        url = 'https://www.okx.com' + request_path
+        
         headers = {
             'OK-ACCESS-KEY': API_KEY_OKX,
-            'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX),
+            'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX, method, request_path, body),
             'OK-ACCESS-TIMESTAMP': transaction_time,
             'OK-ACCESS-PASSPHRASE': API_PASSPHRASE_OKX,
             'Content-Type': 'application/json'
         }
+        
         response = requests.get(url, headers=headers, params={'ccy': token})
         response_json = response.json()
-        if response_json['code'] == "0":  # Успешный код ответа
+        if response_json['code'] == "0":
             data = response_json['data']
             for item in data:
                 if item['chain'] == network:
                     return item['minFee']
             raise ValueError('Network not found for the specified token')
         else:
-            print(f"API Error Response: {json.dumps(response_json, indent=4)}")  # Вывод JSON в случае ошибки
+            print(f"API Error Response: {json.dumps(response_json, indent=4)}")
             error_msg = response_json.get('msg', 'Unknown error')
             raise Exception(f"API Error: {error_msg}")
 
 
-    
     method = 'POST'
     request_path = '/api/v5/asset/withdrawal'
     body = json.dumps({
@@ -156,7 +175,7 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
 
     headers = {
         'OK-ACCESS-KEY': API_KEY_OKX,
-        'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX, body),
+        'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX, method, request_path, body),
         'OK-ACCESS-TIMESTAMP': transaction_time,
         'OK-ACCESS-PASSPHRASE': API_PASSPHRASE_OKX,
         'Content-Type': 'application/json'
