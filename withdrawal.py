@@ -11,6 +11,8 @@ import sys
 import random
 import datetime
 import base64
+import hmac
+import hashlib
 
 def stub_withdraw(address, amount_to_withdrawal, symbolWithdraw, network, exchange):
     cprint(f">>> Stub withdraw ok: {exchange} | {address} | {amount_to_withdrawal} | {symbolWithdraw} | {network}  ", "green")
@@ -108,40 +110,58 @@ def bybit_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exch
         
 
 def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
-    transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+    
+    method = 'POST'
+    request_path = '/api/v5/asset/withdrawal'
+    body = json.dumps({
+        'ccy': symbol_withdraw,
+        'amt': amount_to_withdrawal,
+        'dest': '4',
+        'toAddr': address,
+        'fee': token_fee(symbol_withdraw, network),  # Token fee needs to be fetched or predefined
+        'pwd': '-',  # Assuming password is not required
+        'network': network
+    })
+
+    def sign_message(secret_key):
+        prehash_string = transaction_time + method + request_path + body
+        return base64.b64encode(hmac.new(secret_key.encode(), prehash_string.encode(), hashlib.sha256).digest()).decode()
+
+    headers = {
+        'OK-ACCESS-KEY': API_KEY_OKX,
+        'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX),
+        'OK-ACCESS-TIMESTAMP': transaction_time,
+        'OK-ACCESS-PASSPHRASE': API_PASSPHRASE_OKX,
+        'Content-Type': 'application/json'
+    }
+
+    def token_fee(token, network):
+        url = 'https://www.okx.com/api/v5/asset/currencies'
+        response = requests.get(url, headers={
+            'OK-ACCESS-KEY': API_KEY_OKX,
+            'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX),
+            'OK-ACCESS-TIMESTAMP': transaction_time,
+            'OK-ACCESS-PASSPHRASE': API_PASSPHRASE_OKX,
+            'Content-Type': 'application/json'
+        })
+        info = response.json()
+        network_fee = info['data'][0]['networks'][network]['fee']
+        return network_fee
     try:
-        account_okx = ccxt.okx({
-            'apiKey': API_KEY_OKX,
-            'secret': API_SECRET_OKX,
-            'password': API_PASSPHRASE_OKX,
-            'enableRateLimit': True,
-        })
+        response = requests.post('https://www.okx.com' + request_path, headers=headers, data=body)
+        if response.status_code == 200:
+            cprint(f">>> Successful (okx) | {address} | {amount_to_withdrawal}", "green")
+            write_to_csv(success_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, "success"])
+        else:
+            error_message = response.json().get('msg', 'Unknown error')
+            raise Exception(f"HTTP {response.status_code} {error_message}")
 
-        #info = account_okx.fetch_currencies()
-        #with open(os.path.join(os.path.dirname(__file__), 'account_okx_info.txt'), 'w') as f:
-        #    json.dump(info, f, indent=4)   
-
-        def token_fee(token, network):
-            info = account_okx.fetch_currencies()
-            network_fee = info[token]['networks'][network]['fee']
-            return network_fee
-        
-
-        account_okx.withdraw(symbol_withdraw, amount_to_withdrawal, address, params={
-            'toAddress': address,
-            'chainName': network,
-            'dest': 4,  
-            'fee': token_fee(symbol_withdraw, network),
-            'pwd': '-',
-            'amt': amount_to_withdrawal,
-            'network': network
-        })
-
-        cprint(f">>> Succesfull (okx) | {address} | {amount_to_withdrawal}", "green")
-        write_to_csv(success_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, "success"])
     except Exception as error:
         cprint(f">>> Error (okx) | {address} | {type(error).__name__}: {str(error)}", "red")
-        write_to_csv(error_file_path, [ transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, type(error).__name__, str(error)])
+        write_to_csv(error_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, type(error).__name__, str(error)])
+
+
 
 network_mappings = {
     "binance": {
@@ -160,6 +180,7 @@ network_mappings = {
         "сол": "SOL",
         "bsc": "BEP20",
         "матик": "MATIC",
+        "ерц20": "ETH",
         "function": okex_withdraw
     },
     "bybit": {
