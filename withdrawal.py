@@ -13,6 +13,7 @@ import datetime
 import base64
 import hmac
 import hashlib
+import requests
 
 def stub_withdraw(address, amount_to_withdrawal, symbolWithdraw, network, exchange):
     cprint(f">>> Stub withdraw ok: {exchange} | {address} | {amount_to_withdrawal} | {symbolWithdraw} | {network}  ", "green")
