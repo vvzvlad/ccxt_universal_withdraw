@@ -131,7 +131,7 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
         minfee = get_min_fee()
         result = fundingAPI.withdrawal(ccy=symbol_withdraw,amt=amount_to_withdrawal,dest='4',toAddr=address,fee=minfee, chain=network)
         print(result)
-        if result['code'] == 0:
+        if int(result['code']) == 0:
             cprint(f">>> Successful (okx) | {address} | {amount_to_withdrawal}", "green")
             write_to_csv(success_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, "success"])
         else:
