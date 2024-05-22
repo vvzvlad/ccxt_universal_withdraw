@@ -113,7 +113,7 @@ def bybit_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exch
 
 def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
     cprint(f">>> Withdraw new okex: {exchange} | {address} | {amount_to_withdrawal} | {symbol_withdraw} | {network}  ", "white")
-    transaction_time = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+    transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
     flag = "0" 
     fundingAPI = Funding.FundingAPI(API_KEY_OKX, API_SECRET_OKX, API_PASSPHRASE_OKX, False, flag, debug = False)
 
