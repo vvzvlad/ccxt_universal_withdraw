@@ -112,7 +112,8 @@ def bybit_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exch
         
 
 def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
-    cprint(f">>> Withdraw new okex: {exchange} | {address} | {amount_to_withdrawal} | {symbol_withdraw} | {network}  ", "white")
+    chain = symbol_withdraw + "-" + network
+    cprint(f">>> Withdraw new okex: {exchange} | {address} | {amount_to_withdrawal} | {symbol_withdraw} | {network} | {chain} ", "white")
     transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
     flag = "0" 
     fundingAPI = Funding.FundingAPI(API_KEY_OKX, API_SECRET_OKX, API_PASSPHRASE_OKX, False, flag, debug = False)
@@ -121,7 +122,7 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
         result = fundingAPI.get_currencies()
         data = result['data']
         for item in data:
-            if item['chain'] == (symbol_withdraw + "-" + network):
+            if item['chain'] == chain:
                 return item['minFee']
     #('code': '0', 'data": [('ant': '0.014', "ccy": 'ETH", 'chain*: 'ETH-ERC20', 'clientId": "', "wdId": "198321911')], 'msg': **)
     #{'code': '58350', 'data': [], 'msg': 'Insufficient balance'}
@@ -129,7 +130,7 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
 
     try:
         minfee = get_min_fee()
-        result = fundingAPI.withdrawal(ccy=symbol_withdraw,amt=amount_to_withdrawal,dest='4',toAddr=address,fee=minfee, chain=network)
+        result = fundingAPI.withdrawal(ccy=symbol_withdraw,amt=amount_to_withdrawal,dest='4',toAddr=address,fee=minfee, chain=chain)
         print(result)
         if int(result['code']) == 0:
             cprint(f">>> Successful (okx) | {address} | {amount_to_withdrawal}", "green")
