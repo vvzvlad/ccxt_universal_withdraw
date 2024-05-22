@@ -153,6 +153,8 @@ network_mappings = {
         "сол": "SOL",
         "bsc": "BEP20",
         "матик": "MATIC",
+        "зк": "ZKSYNCERA",
+        "ерц20": "ERC20",
         "function": binance_withdraw
     },
     "okex": {
@@ -163,6 +165,7 @@ network_mappings = {
         "bsc": "BSC",
         "матик": "Polygon",
         "ерц20": "ERC20",
+        "зк": "zkSync Era",
         "function": okex_withdraw
     },
     "bybit": {
