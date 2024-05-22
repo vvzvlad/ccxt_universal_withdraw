@@ -121,7 +121,7 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
         result = fundingAPI.get_currencies()
         data = result['data']
         for item in data:
-            if item['chain'] == "ETH-ERC20":
+            if item['chain'] == (symbol_withdraw + "-" + network):
                 return item['minFee']
     #('code': '0', 'data": [('ant': '0.014', "ccy": 'ETH", 'chain*: 'ETH-ERC20', 'clientId": "', "wdId": "198321911')], 'msg': **)
     #{'code': '58350', 'data': [], 'msg': 'Insufficient balance'}
@@ -155,13 +155,13 @@ network_mappings = {
         "function": binance_withdraw
     },
     "okex": {
-        "арби": "ARBONE",
-        "опти": "OPTIMISM",
+        "арби": "Arbitrum One",
+        "опти": "Optimism",
         "бейс": "Base",
-        "сол": "SOL",
-        "bsc": "BEP20",
-        "матик": "MATIC",
-        "ерц20": "ETH-ERC20",
+        "сол": "Solana",
+        "bsc": "BSC",
+        "матик": "Polygon",
+        "ерц20": "ERC20",
         "function": okex_withdraw
     },
     "bybit": {
