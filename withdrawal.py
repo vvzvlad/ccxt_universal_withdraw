@@ -14,6 +14,7 @@ import base64
 import hmac
 import hashlib
 import requests
+import okx.Funding as Funding
 
 def stub_withdraw(address, amount_to_withdrawal, symbolWithdraw, network, exchange):
     cprint(f">>> Stub withdraw ok: {exchange} | {address} | {amount_to_withdrawal} | {symbolWithdraw} | {network}  ", "green")
@@ -111,88 +112,29 @@ def bybit_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exch
         
 
 def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
-    transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
- 
-    def sign_message(secret_key, method, request_path, timestamp, body=''):
-        print(f"Transaction Time: {timestamp}")
-        print(f"HTTP Method: {method}")
-        print(f"Request Path: {request_path}")
-        print(f"Body: {body}")
+    cprint(f">>> Withdraw new okex: {exchange} | {address} | {amount_to_withdrawal} | {symbol_withdraw} | {network}  ", "white")
+    transaction_time = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+    flag = "0" 
+    fundingAPI = Funding.FundingAPI(API_KEY_OKX, API_SECRET_OKX, API_PASSPHRASE_OKX, False, flag, debug = False)
 
-        if str(body) == '{}' or str(body) == 'None':
-            body = ''
-        message = str(timestamp) + str.upper(method) + request_path + str(body)
-
-        mac = hmac.new(bytes(secret_key, encoding='utf8'), bytes(message, encoding='utf-8'), digestmod='sha256')
-        digest = mac.digest()
-        base64_digest = base64.b64encode(digest)
-
-        print(f"Prehash String: {message}")
-        
-        print(f"Signature: {base64_digest}")
-        return base64_digest
-
-    def token_fee(token, network):
-        now = datetime.datetime.utcnow()
-        t = now.isoformat("T", "milliseconds")
-        timestamp = t + "Z"
-        method = 'GET'
-        request_path = '/api/v5/asset/currencies'
-        body = ''  # Для GET запроса тело пустое
-        url = 'https://www.okx.com' + request_path
-        
-        headers = {
-            'OK-ACCESS-KEY': API_KEY_OKX,
-            'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX, method, request_path, timestamp, body),
-            'OK-ACCESS-TIMESTAMP': timestamp,
-            'OK-ACCESS-PASSPHRASE': API_PASSPHRASE_OKX,
-            'Content-Type': 'application/json'
-        }
-        
-        response = requests.get(url, headers=headers, params={'ccy': token})
-        response_json = response.json()
-        if response_json['code'] == "0":
-            data = response_json['data']
-            for item in data:
-                if item['chain'] == network:
-                    return item['minFee']
-            raise ValueError('Network not found for the specified token')
-        else:
-            print(f"API Error Response: {json.dumps(response_json, indent=4)}")
-            error_msg = response_json.get('msg', 'Unknown error')
-            raise Exception(f"API Error: {error_msg}")
-
-
-    method = 'POST'
-    request_path = '/api/v5/asset/withdrawal'
-    body = json.dumps({
-        'ccy': symbol_withdraw,
-        'amt': amount_to_withdrawal,
-        'dest': '4',
-        'toAddr': address,
-        'fee': token_fee(symbol_withdraw, network),  # Token fee needs to be fetched or predefined
-        'pwd': '-',  # Assuming password is not required
-        'network': network
-    })
-
-
-    headers = {
-        'OK-ACCESS-KEY': API_KEY_OKX,
-        'OK-ACCESS-SIGN': sign_message(API_SECRET_OKX, method, request_path, body),
-        'OK-ACCESS-TIMESTAMP': transaction_time,
-        'OK-ACCESS-PASSPHRASE': API_PASSPHRASE_OKX,
-        'Content-Type': 'application/json'
-    }
-
+    def get_min_fee():
+        result = fundingAPI.get_currencies()
+        data = result['data']
+        for item in data:
+            if item['chain'] == "ETH-ERC20":
+                return item['minFee']
+    
 
     try:
-        response = requests.post('https://www.okx.com' + request_path, headers=headers, data=body)
-        if response.status_code == 200:
-            cprint(f">>> Successful (okx) | {address} | {amount_to_withdrawal}", "green")
-            write_to_csv(success_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, "success"])
-        else:
-            error_message = response.json().get('msg', 'Unknown error')
-            raise Exception(f"HTTP {response.status_code} {error_message}")
+        minfee = get_min_fee()
+        result = fundingAPI.withdrawal(ccy=symbol_withdraw,amt=amount_to_withdrawal,dest='4',toAddr=address,fee=minfee, chain=network)
+        print(result)
+        #if response.status_code == 200:
+        #    cprint(f">>> Successful (okx) | {address} | {amount_to_withdrawal}", "green")
+        #    write_to_csv(success_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, "success"])
+        #else:
+        #    error_message = response.json().get('msg', 'Unknown error')
+        #    raise Exception(f"HTTP {response.status_code} {error_message}")
 
     except Exception as error:
         cprint(f">>> Error (okx) | {address} | {type(error).__name__}: {str(error)}", "red")
@@ -217,7 +159,7 @@ network_mappings = {
         "сол": "SOL",
         "bsc": "BEP20",
         "матик": "MATIC",
-        "ерц20": "ETH",
+        "ерц20": "ETH-ERC20",
         "function": okex_withdraw
     },
     "bybit": {
