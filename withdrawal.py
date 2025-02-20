@@ -128,8 +128,6 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
 
     def get_min_fee():
         result = fundingAPI.get_currencies()
-        if result['code'] != 0:
-            raise Exception(f"FundingAPI error {result['code']} {result.get('msg', 'Unknown error')}")
         data = result['data']
         for item in data:
             if item['chain'] == chain:
@@ -140,8 +138,7 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
 
     try:
         minfee = get_min_fee()
-        result = fundingAPI.withdrawal(ccy=symbol_withdraw,amt=amount_to_withdrawal,dest='4',toAddr=address,fee=minfee, chain=chain)
-        print(f"withdrawal result: {result}")
+        result = fundingAPI.withdrawal(ccy=symbol_withdraw,amt=amount_to_withdrawal,dest='4',toAddr=address,chain=chain)
         if int(result['code']) == 0:
             cprint(f">>> Successful (okx) | {address} | {amount_to_withdrawal}", "green")
             write_to_csv(success_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, "success"])
@@ -150,7 +147,6 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
             raise Exception(f"FundingAPI error {result['code']} {error_message}")
 
     except Exception as error:
-        print(f"Fail: {error    }\n{traceback.format_exc()}")
         cprint(f">>> Error (okx) | {address} | {type(error).__name__}: {str(error)}", "red")
         write_to_csv(error_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, type(error).__name__, str(error)])
 
@@ -292,4 +288,3 @@ if __name__ == "__main__":
             sleep_time = random.randint(time_sleep_low, time_sleep_max)
             cprint(f'Sleeping for {sleep_time} seconds...', 'white')
             time.sleep(sleep_time)
-
