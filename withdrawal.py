@@ -5,11 +5,13 @@ import csv
 import json
 import sys
 import datetime
+from datetime import UTC
 import base64
 import traceback
 from locale import atof
 import hashlib
 import hmac
+import warnings
 
 import ccxt
 
@@ -119,7 +121,9 @@ def bybit_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exch
 def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, exchange):
     chain = symbol_withdraw + "-" + network
     cprint(f">>> Withdraw new okex: {exchange} | {address} | {amount_to_withdrawal} | {symbol_withdraw} | {network} | {chain} ", "white")
-    transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        transaction_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
     flag = "0" 
     fundingAPI = Funding.FundingAPI(API_KEY_OKX, API_SECRET_OKX, API_PASSPHRASE_OKX, False, flag, debug = False)
 
@@ -138,7 +142,7 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
     try:
         minfee = get_min_fee()
         result = fundingAPI.withdrawal(ccy=symbol_withdraw,amt=amount_to_withdrawal,dest='4',toAddr=address,fee=minfee, chain=chain)
-        print(result)
+        print(f"withdrawal result: {result}")
         if int(result['code']) == 0:
             cprint(f">>> Successful (okx) | {address} | {amount_to_withdrawal}", "green")
             write_to_csv(success_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, "success"])
@@ -147,7 +151,7 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
             raise Exception(f"FundingAPI error {result['code']} {error_message}")
 
     except Exception as error:
-        #print(f"Fail: {error    }\n{traceback.format_exc()}")
+        print(f"Fail: {error    }\n{traceback.format_exc()}")
         cprint(f">>> Error (okx) | {address} | {type(error).__name__}: {str(error)}", "red")
         write_to_csv(error_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, type(error).__name__, str(error)])
 
@@ -174,7 +178,7 @@ network_mappings = {
         "матик": "Polygon",
         "ерц20": "ERC20",
         "зк": "zkSync Era",
-        "btc": "BTC",
+        "btc": "Bitcoin",
         "function": okex_withdraw
     },
     "bybit": {
