@@ -1,20 +1,25 @@
 import time
-import ccxt
-import json
-from termcolor import cprint
+import os
 import random
 import csv
-from locale import atof
-import os
-import yaml
+import json
 import sys
-import random
 import datetime
 import base64
-import hmac
+import traceback
+from locale import atof
 import hashlib
+import hmac
+
+import ccxt
+
+from termcolor import cprint
+
+import yaml
+
 import requests
 import okx.Funding as Funding
+
 
 def stub_withdraw(address, amount_to_withdrawal, symbolWithdraw, network, exchange):
     cprint(f">>> Stub withdraw ok: {exchange} | {address} | {amount_to_withdrawal} | {symbolWithdraw} | {network}  ", "green")
@@ -120,6 +125,8 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
 
     def get_min_fee():
         result = fundingAPI.get_currencies()
+        if result['code'] != 0:
+            raise Exception(f"FundingAPI error {result['code']} {result.get('msg', 'Unknown error')}")
         data = result['data']
         for item in data:
             if item['chain'] == chain:
@@ -140,6 +147,7 @@ def okex_withdraw(address, amount_to_withdrawal, symbol_withdraw, network, excha
             raise Exception(f"FundingAPI error {result['code']} {error_message}")
 
     except Exception as error:
+        #print(f"Fail: {error    }\n{traceback.format_exc()}")
         cprint(f">>> Error (okx) | {address} | {type(error).__name__}: {str(error)}", "red")
         write_to_csv(error_file_path, [transaction_time, exchange, network, symbol_withdraw, address, amount_to_withdrawal, type(error).__name__, str(error)])
 
@@ -166,6 +174,7 @@ network_mappings = {
         "матик": "Polygon",
         "ерц20": "ERC20",
         "зк": "zkSync Era",
+        "btc": "BTC",
         "function": okex_withdraw
     },
     "bybit": {
