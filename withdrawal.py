@@ -5,7 +5,6 @@ import csv
 import json
 import sys
 import datetime
-from datetime import UTC
 import base64
 import traceback
 from locale import atof
